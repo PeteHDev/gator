@@ -6,7 +6,7 @@ import os from "os";
 
 function main() {
     if (process.argv.length < 3) {
-        console.error("No arguments provided.");
+        console.error("usage: cli <command> [args...]");
         process.exit(1);
     }
     
@@ -22,7 +22,7 @@ function main() {
         if (err instanceof Error) {
             console.error(`Error running command: ${err.message}.`);
         } else {
-            console.error(`Unexpected exception caught when trying to run command: ${err}`);
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
         }
         process.exit(1);
     }
