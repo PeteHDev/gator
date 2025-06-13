@@ -6,10 +6,10 @@ export function registerCommand(registry: CommandsRegistry, cmdName: string, han
     registry[cmdName] = handler;
 }
 
-export function runCommand(registry: CommandsRegistry, cmdName: string, ...args: string[]) {
+export async function runCommand(registry: CommandsRegistry, cmdName: string, ...args: string[]) {
     const handler = registry[cmdName];
     if (!handler) {
         throw new Error(`Unknown command: ${cmdName}`);
     }
-    handler(cmdName, ...args);
+    await handler(cmdName, ...args);
 }

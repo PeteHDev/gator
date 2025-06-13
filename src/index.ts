@@ -1,10 +1,10 @@
 import { error } from "console";
-import { handlerLogin } from "./command_handler";
+import { handlerLogin, handlerRegister } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { setUser, readConfig } from "./config";
 import os from "os";
 
-function main() {
+async function main() {
     if (process.argv.length < 3) {
         console.error("usage: cli <command> [args...]");
         process.exit(1);
@@ -12,20 +12,24 @@ function main() {
     
     const cmdRegistry: CommandsRegistry = {};
     registerCommand(cmdRegistry, "login", handlerLogin);
+    registerCommand(cmdRegistry, "register", handlerRegister);
     
 
     const cmdName = process.argv[2];
     const commandArguments = process.argv.slice(3);
+    let exitCode = 0;
     try {
-        runCommand(cmdRegistry, cmdName, ...commandArguments);
+        await runCommand(cmdRegistry, cmdName, ...commandArguments);
     } catch(err) {
         if (err instanceof Error) {
             console.error(`Error running command: ${err.message}.`);
         } else {
             console.error(`Unexpected exception caught trying to run command: ${err}`);
         }
-        process.exit(1);
+        exitCode = 1;
+    } finally {
+        process.exit(exitCode);
     }
 }
 
-main();
+await main();
