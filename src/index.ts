@@ -1,5 +1,5 @@
 import { error } from "console";
-import { handlerLogin, handlerRegister } from "./command_handler";
+import { handlerLogin, handlerRegister, handlerReset } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { setUser, readConfig } from "./config";
 import os from "os";
@@ -13,6 +13,7 @@ async function main() {
     const cmdRegistry: CommandsRegistry = {};
     registerCommand(cmdRegistry, "login", handlerLogin);
     registerCommand(cmdRegistry, "register", handlerRegister);
+    registerCommand(cmdRegistry, "reset", handlerReset);
     
 
     const cmdName = process.argv[2];
