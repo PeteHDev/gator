@@ -102,13 +102,13 @@ export async function handlerFeeds() {
     try {
         const allFeeds = await getFeeds();
 
-        console.log("ID                              |URL                             |User");
         for (const feed of allFeeds) {
             const id = feed.id;
             const url = feed.url;
+            const feedName = feed.name;
 
             const user = await getUserById(feed.userId);
-            console.log(`${id}|     ${url}|     ${user?.name}`);
+            console.log(`${id}|     ${url}|     ${feedName}|     ${user?.name}`);
         }
     } catch(err) {
         if (err instanceof Error) {
