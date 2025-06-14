@@ -1,7 +1,8 @@
 import { readConfig, setUser } from "./config";
-import { createFeed, getFeeds } from "./lib/db/queries/feeds";
+import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feed_follows";
+import { createFeed, getFeedById, getFeeds } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getCurrentUser, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
-import { feeds, type Feed, type User } from "./lib/db/schema";
+import { type Feed, type User } from "./lib/db/schema";
 import { fetchFeed } from "./rss";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
@@ -92,6 +93,7 @@ export async function handlerAddfeed(cmdName: string, ...args: string[]) {
         await fetchFeed(feedURL);
         const feedInDb: Feed = await createFeed(feedName, feedURL, user.id);
 
+        const newFeedFollow = await createFeedFollow(user.id, feedURL);
         printFeed(feedInDb, user);
     } catch(err) {
         if (err instanceof Error) {
@@ -123,8 +125,55 @@ export async function handlerFeeds() {
     }
 }
 
-export async function handlerFollow(feedURL: string) {
-    
+export async function handlerFollow(cmdName: string, ...args: string[]) {
+    if (args.length < 1) {
+        throw new Error(`${cmdName} command expects 1 argument: <feed url>`);
+    } else if (args.length > 1) {
+        throw new Error(`${cmdName} command expects only 1 argument: <feed url>`);
+    }
+
+    const user = await getCurrentUser();
+    if (user === undefined) {
+        throw new Error(`current user ${readConfig().currentUserName} is not registered`);
+    }
+
+    try {
+        const newFeedFollow = await createFeedFollow(user.id, args[0]);
+
+        console.log("user: " + user.name);
+        console.log("follows: " + newFeedFollow.name);
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+}
+
+export async function handlerFollowing() {
+    const user = await getCurrentUser();
+    if (user === undefined) {
+        throw new Error("current user is not registerd");
+    }
+
+    try {
+        const followsList = await getFeedFollowsForUser(user.name);
+        console.log(`${user.name} follows:`);
+        for (const follow of followsList) {
+            const feed = await getFeedById(follow.feedId);
+            if (feed === undefined) {
+                continue;
+            }
+            console.log("* " + feed.name);
+        }
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
 }
 
 function printFeed(feed: Feed, user: User) {

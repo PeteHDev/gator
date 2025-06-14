@@ -1,4 +1,4 @@
-import { CommandHandler, handlerLogin } from "./command_handler";
+import { CommandHandler } from "./command_handler";
 
 export type CommandsRegistry = Record<string, CommandHandler>; 
 
