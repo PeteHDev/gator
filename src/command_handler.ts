@@ -1,5 +1,5 @@
 import { readConfig, setUser } from "./config";
-import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feed_follows";
+import { createFeedFollow, deleteFollow, getFeedFollowsForUser } from "./lib/db/queries/feed_follows";
 import { createFeed, getFeedById, getFeeds } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
 import { type Feed, type User } from "./lib/db/schema";
@@ -14,10 +14,8 @@ export type UserCommandHandler = (
 ) => Promise<void> | void;
 
 export async function handlerLogin(cmdName: string, ...args: string[]) {
-    if (args.length === 0) {
-        throw new Error(`${cmdName} command expects username as an argument`);
-    } else if (args.length > 1) {
-        throw new Error(`${cmdName} command expects only 1 <username> argument`);
+    if (args.length !== 1) {
+        throw new Error(`usage: ${cmdName} <user name>>`);
     }
 
     const userName = args[0];
@@ -30,14 +28,11 @@ export async function handlerLogin(cmdName: string, ...args: string[]) {
 }
 
 export async function handlerRegister(cmdName: string, ...args: string[]) {
-    if (args.length === 0) {
-        throw new Error(`${cmdName} command expects username as an argument`);
-    } else if (args.length > 1) {
-        throw new Error(`${cmdName} command expects only 1 <username> argument`);
+    if (args.length !== 1) {
+        throw new Error(`usage: ${cmdName} <user name>`);
     }
 
     const userName = args[0];
-
     if (await getUserByName(userName) !== undefined) {
         throw new Error(`user ${userName} already exists`);
     }
@@ -81,10 +76,8 @@ export async function handlerAgg() {
 }
 
 export async function handlerAddfeed(cmdName: string, user: User, ...args: string[]) {
-    if (args.length < 2) {
-        throw new Error(`${cmdName} command expects 2 arguments`);
-    } else if (args.length > 2) {
-        throw new Error(`${cmdName} command expects only 2 arguments: <feed name> and <feed url>`);
+    if (args.length !== 2) {
+        throw new Error(`usage: ${cmdName} <feed name> <feed URL>`);
     }
 
     const feedName = args[0];
@@ -128,7 +121,7 @@ export async function handlerFeeds() {
 
 export async function handlerFollow(cmdName: string, user: User, ...args: string[]) {
     if (args.length !== 1) {
-        throw new Error(`${cmdName} command expects 1 argument: <feed url>`);
+        throw new Error(`usage: ${cmdName} <feed URL>`);
     }
 
     try {
@@ -156,6 +149,22 @@ export async function handlerFollowing(cmdName: string, user: User) {
             }
             console.log("* " + feed.name);
         }
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+}
+
+export async function handlerUnfollow(cmdName: string, user: User, ...args: string[]) {
+    if (args.length !== 1) {
+        throw new Error(`usage: ${cmdName} <feed URL>`);
+    }
+
+    try {
+        await deleteFollow(user, args[0]);
     } catch(err) {
         if (err instanceof Error) {
             throw new Error(err.message);
