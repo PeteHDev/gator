@@ -24,15 +24,6 @@ export async function getUserById(id: string) {
   return user;
 }
 
-export async function getCurrentUser() {
-  const currentUserName = readConfig().currentUserName;
-  const user = await db.query.users.findFirst({
-    where: eq(users.name, currentUserName)
-  });
-
-  return user;
-}
-
 export async function getUsers() {
   return await db.select().from(users);
 }

@@ -1,11 +1,17 @@
 import { readConfig, setUser } from "./config";
 import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feed_follows";
 import { createFeed, getFeedById, getFeeds } from "./lib/db/queries/feeds";
-import { createUser, deleteAllUsers, getCurrentUser, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
+import { createUser, deleteAllUsers, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
 import { type Feed, type User } from "./lib/db/schema";
 import { fetchFeed } from "./rss";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
+
+export type UserCommandHandler = (
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) => Promise<void> | void;
 
 export async function handlerLogin(cmdName: string, ...args: string[]) {
     if (args.length === 0) {
@@ -74,7 +80,7 @@ export async function handlerAgg() {
     }
 }
 
-export async function handlerAddfeed(cmdName: string, ...args: string[]) {
+export async function handlerAddfeed(cmdName: string, user: User, ...args: string[]) {
     if (args.length < 2) {
         throw new Error(`${cmdName} command expects 2 arguments`);
     } else if (args.length > 2) {
@@ -83,11 +89,6 @@ export async function handlerAddfeed(cmdName: string, ...args: string[]) {
 
     const feedName = args[0];
     const feedURL = args[1];
-
-    const user = await getCurrentUser();
-    if (user === undefined) {
-        throw new Error("current user is not registered");
-    }
 
     try {
         await fetchFeed(feedURL);
@@ -125,16 +126,9 @@ export async function handlerFeeds() {
     }
 }
 
-export async function handlerFollow(cmdName: string, ...args: string[]) {
-    if (args.length < 1) {
+export async function handlerFollow(cmdName: string, user: User, ...args: string[]) {
+    if (args.length !== 1) {
         throw new Error(`${cmdName} command expects 1 argument: <feed url>`);
-    } else if (args.length > 1) {
-        throw new Error(`${cmdName} command expects only 1 argument: <feed url>`);
-    }
-
-    const user = await getCurrentUser();
-    if (user === undefined) {
-        throw new Error(`current user ${readConfig().currentUserName} is not registered`);
     }
 
     try {
@@ -151,12 +145,7 @@ export async function handlerFollow(cmdName: string, ...args: string[]) {
     }
 }
 
-export async function handlerFollowing() {
-    const user = await getCurrentUser();
-    if (user === undefined) {
-        throw new Error("current user is not registerd");
-    }
-
+export async function handlerFollowing(cmdName: string, user: User) {
     try {
         const followsList = await getFeedFollowsForUser(user.name);
         console.log(`${user.name} follows:`);

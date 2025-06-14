@@ -1,8 +1,11 @@
 import { error } from "console";
-import { handlerAddfeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUsers } from "./command_handler";
+import { CommandHandler, handlerAddfeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUsers } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { setUser, readConfig } from "./config";
 import os from "os";
+import { User } from "./lib/db/schema";
+import { getUserByName } from "./lib/db/queries/users";
+import { middlewareLoggedIn } from "./middleware";
 
 async function main() {
     if (process.argv.length < 3) {
@@ -16,10 +19,10 @@ async function main() {
     registerCommand(cmdRegistry, "users", handlerUsers);
     registerCommand(cmdRegistry, "reset", handlerReset);
     registerCommand(cmdRegistry, "agg", handlerAgg);
-    registerCommand(cmdRegistry, "addfeed", handlerAddfeed);
+    registerCommand(cmdRegistry, "addfeed", middlewareLoggedIn(handlerAddfeed));
     registerCommand(cmdRegistry, "feeds", handlerFeeds);
-    registerCommand(cmdRegistry, "follow", handlerFollow);
-    registerCommand(cmdRegistry, "following", handlerFollowing);
+    registerCommand(cmdRegistry, "follow", middlewareLoggedIn(handlerFollow));
+    registerCommand(cmdRegistry, "following", middlewareLoggedIn(handlerFollowing));
     
 
     const cmdName = process.argv[2];
