@@ -1,4 +1,5 @@
 import { db } from "..";
+import { readConfig } from "../../../config";
 import { users } from "../schema";
 import { eq } from "drizzle-orm";
 
@@ -10,6 +11,23 @@ export async function createUser(name: string) {
 export async function getUserByName(userName: string) {
   const user = await db.query.users.findFirst({
     where: eq(users.name, userName)
+  });
+
+  return user;
+}
+
+export async function getUserById(id: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, id)
+  });
+
+  return user;
+}
+
+export async function getCurrentUser() {
+  const currentUserName = readConfig().currentUserName;
+  const user = await db.query.users.findFirst({
+    where: eq(users.name, currentUserName)
   });
 
   return user;

@@ -1,13 +1,16 @@
 import { readConfig, setUser } from "./config";
-import { createUser, deleteAllUsers, getUserByName, getUsers } from "./lib/db/queries/users";
+import { createFeed, getFeeds } from "./lib/db/queries/feeds";
+import { createUser, deleteAllUsers, getCurrentUser, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
+import { feeds, type Feed, type User } from "./lib/db/schema";
+import { fetchFeed } from "./rss";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 
 export async function handlerLogin(cmdName: string, ...args: string[]) {
     if (args.length === 0) {
-        throw new Error("login command expects username as an argument");
+        throw new Error(`${cmdName} command expects username as an argument`);
     } else if (args.length > 1) {
-        throw new Error("login command expects only 1 <username> argument");
+        throw new Error(`${cmdName} command expects only 1 <username> argument`);
     }
 
     const userName = args[0];
@@ -21,9 +24,9 @@ export async function handlerLogin(cmdName: string, ...args: string[]) {
 
 export async function handlerRegister(cmdName: string, ...args: string[]) {
     if (args.length === 0) {
-        throw new Error("register command expects username as an argument");
+        throw new Error(`${cmdName} command expects username as an argument`);
     } else if (args.length > 1) {
-        throw new Error("register command expects only 1 <username> argument");
+        throw new Error(`${cmdName} command expects only 1 <username> argument`);
     }
 
     const userName = args[0];
@@ -52,4 +55,93 @@ export async function handlerUsers() {
 
 export async function handlerReset(cmdName: string, ...args: string[]) {
     await deleteAllUsers();
+}
+
+export async function handlerAgg() {
+    const feed = await fetchFeed("https://www.wagslane.dev/index.xml");
+    console.log(feed.channel);
+    console.log(feed.channel.title);
+    console.log(feed.channel.link);
+    console.log(feed.channel.description);
+    console.log("items:");
+    for (const item of feed.channel.item) {
+        console.log("================");
+        console.log(item.title);
+        console.log(item.link);
+        console.log(item.description);
+        console.log(item.pubDate);
+    }
+}
+
+export async function handlerAddfeed(cmdName: string, ...args: string[]) {
+    if (args.length < 2) {
+        throw new Error(`${cmdName} command expects 2 arguments`);
+    } else if (args.length > 2) {
+        throw new Error(`${cmdName} command expects only 2 arguments: <feed name> and <feed url>`);
+    }
+
+    const feedName = args[0];
+    const feedURL = args[1];
+
+    const user = await getCurrentUser();
+    if (user === undefined) {
+        throw new Error("current user is not registered");
+    }
+
+    try {
+        await fetchFeed(feedURL);
+        const feedInDb: Feed = await createFeed(feedName, feedURL, user.id);
+
+        printFeed(feedInDb, user);
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+}
+
+export async function handlerFeeds() {
+    try {
+        const allFeeds = await getFeeds();
+
+        console.log("ID                              |URL                             |User");
+        for (const feed of allFeeds) {
+            const id = feed.id;
+            const url = feed.url;
+
+            const user = await getUserById(feed.userId);
+            console.log(`${id}|     ${url}|     ${user?.name}`);
+        }
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+}
+
+export async function handlerFollow(feedURL: string) {
+    
+}
+
+function printFeed(feed: Feed, user: User) {
+    console.log("=====User=====");
+    printUser(user);
+    console.log("=====Feed=====");
+    console.log(`id: ${feed.id}`);
+    console.log(`name: ${feed.name}`);
+    console.log(`created: ${feed.createdAt}`);
+    console.log(`updated: ${feed.updatedAt}`);
+    console.log(`url: ${feed.url}`);
+    console.log(`user id: ${feed.userId}`);
+}
+
+function printUser(user: User) {
+    console.log(`id: ${user.id}`);
+    console.log(`name: ${user.name}`);
+    console.log(`created: ${user.createdAt}`);
+    console.log(`updated: ${user.updatedAt}`);
 }

@@ -1,5 +1,5 @@
 import { error } from "console";
-import { handlerLogin, handlerRegister, handlerReset, handlerUsers } from "./command_handler";
+import { handlerAddfeed, handlerAgg, handlerFeeds, handlerLogin, handlerRegister, handlerReset, handlerUsers } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { setUser, readConfig } from "./config";
 import os from "os";
@@ -15,6 +15,9 @@ async function main() {
     registerCommand(cmdRegistry, "register", handlerRegister);
     registerCommand(cmdRegistry, "users", handlerUsers);
     registerCommand(cmdRegistry, "reset", handlerReset);
+    registerCommand(cmdRegistry, "agg", handlerAgg);
+    registerCommand(cmdRegistry, "addfeed", handlerAddfeed);
+    registerCommand(cmdRegistry, "feeds", handlerFeeds);
     
 
     const cmdName = process.argv[2];
@@ -24,9 +27,9 @@ async function main() {
         await runCommand(cmdRegistry, cmdName, ...commandArguments);
     } catch(err) {
         if (err instanceof Error) {
-            console.error(`Error running command: ${err.message}.`);
+            console.error(`Error running ${cmdName} command: ${err.message}.`);
         } else {
-            console.error(`Unexpected exception caught trying to run command: ${err}`);
+            console.error(`Unexpected exception caught trying to run ${cmdName} command: ${err}`);
         }
         exitCode = 1;
     } finally {
