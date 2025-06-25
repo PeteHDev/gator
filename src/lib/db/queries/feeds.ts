@@ -1,6 +1,7 @@
 import { db } from "..";
+import { fetchFeed } from "../../../rss";
 import { feeds } from "../schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export async function createFeed(name: string, url: string, userId: string | undefined) {
     if (userId === undefined) {
@@ -31,4 +32,43 @@ export async function getFeedById(feedId: string) {
     });
 
     return feed;
+}
+
+export async function getNextFeedToFetch() {
+    const [feed] = await db.select().from(feeds).orderBy(sql`${feeds.lastFetchedAt} nulls first`);
+    if (feed === undefined) {
+        throw new Error("No feeds to fetch");
+    }
+
+    return feed;
+}
+
+export async function scrapeFeeds() {
+    const nextFeed = await getNextFeedToFetch();
+    markFeedFetched(nextFeed.url);
+    const fetchedFeed = await fetchFeed(nextFeed.url);
+
+    console.log("\n\n==================================================");
+    console.log(nextFeed.lastFetchedAt);
+    console.log(`Posts from ${nextFeed.name}(${nextFeed.url})`);
+    for (const item of fetchedFeed.channel.item) {
+        console.log(" * " + item.title);
+    }
+}
+
+async function markFeedFetched(feedURL: string) {
+    const feed = await getFeedByURL(feedURL);
+    if (feed === undefined) {
+        throw new Error("Missing feed with the given URL.");
+    }
+
+    await db
+        .update(feeds)
+        .set({ lastFetchedAt: getLocalTimeAsUTC() })
+        .where(eq(feeds.id, feed.id));
+}
+
+function getLocalTimeAsUTC() {
+    const now = new Date();
+    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
 }

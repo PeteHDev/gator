@@ -24,6 +24,12 @@ export async function getUserById(id: string) {
   return user;
 }
 
+export async function getCurrentUser() {
+  const cfg = readConfig();
+
+  return await getUserByName(cfg.currentUserName);
+}
+
 export async function getUsers() {
   return await db.select().from(users);
 }

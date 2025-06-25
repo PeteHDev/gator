@@ -1,8 +1,8 @@
 import { readConfig, setUser } from "./config";
-import { createFeedFollow, deleteFollow, getFeedFollowsForUser } from "./lib/db/queries/feed_follows";
-import { createFeed, getFeedById, getFeeds } from "./lib/db/queries/feeds";
-import { createUser, deleteAllUsers, getUserByName, getUsers, getUserById } from "./lib/db/queries/users";
-import { type Feed, type User } from "./lib/db/schema";
+import { createFeedFollow, deleteFollow, getFeedFollowsForUser, isFollowing } from "./lib/db/queries/feed_follows";
+import { createFeed, getFeedById, getFeedByURL, getFeeds, scrapeFeeds } from "./lib/db/queries/feeds";
+import { createUser, deleteAllUsers, getUserByName, getUsers, getUserById, getCurrentUser } from "./lib/db/queries/users";
+import { feeds, type Feed, type User } from "./lib/db/schema";
 import { fetchFeed } from "./rss";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
@@ -59,20 +59,48 @@ export async function handlerReset(cmdName: string, ...args: string[]) {
     await deleteAllUsers();
 }
 
-export async function handlerAgg() {
-    const feed = await fetchFeed("https://www.wagslane.dev/index.xml");
-    console.log(feed.channel);
-    console.log(feed.channel.title);
-    console.log(feed.channel.link);
-    console.log(feed.channel.description);
-    console.log("items:");
-    for (const item of feed.channel.item) {
-        console.log("================");
-        console.log(item.title);
-        console.log(item.link);
-        console.log(item.description);
-        console.log(item.pubDate);
+export async function handlerAgg(cmdName: string, ...args: string[]) {
+    if (args.length !== 1) {
+        throw new Error(`usage: ${cmdName} <time between requests, e.g 1s, 1m, 1h>`);
     }
+
+    try {
+        const timeBetweenRequests = parseDuration(args[0]);
+        console.log(`Collecting feeds every ${timeBetweenRequests}ms\n`);
+        scrapeFeeds().catch(() => { console.log(`Failed to fetch feed`); });
+
+        const interval = setInterval(() => {
+            scrapeFeeds().catch( () => { console.log(`Failed to fetch feed`); } );
+        }, timeBetweenRequests);
+
+        await new Promise<void>((resolve) => {
+            process.on("SIGINT", () => {
+                console.log("\nShutting down feed aggregator...");
+                clearInterval(interval);
+                resolve();
+            });
+        });
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+
+    // const feed = await fetchFeed("https://www.wagslane.dev/index.xml");
+    // console.log(feed.channel);
+    // console.log(feed.channel.title);
+    // console.log(feed.channel.link);
+    // console.log(feed.channel.description);
+    // console.log("items:");
+    // for (const item of feed.channel.item) {
+    //     console.log("================");
+    //     console.log(item.title);
+    //     console.log(item.link);
+    //     console.log(item.description);
+    //     console.log(item.pubDate);
+    // }
 }
 
 export async function handlerAddfeed(cmdName: string, user: User, ...args: string[]) {
@@ -122,6 +150,10 @@ export async function handlerFeeds() {
 export async function handlerFollow(cmdName: string, user: User, ...args: string[]) {
     if (args.length !== 1) {
         throw new Error(`usage: ${cmdName} <feed URL>`);
+    }
+
+    if (await isFollowing(args[0])) {
+        throw new Error("You are already following this feed");
     }
 
     try {
@@ -191,4 +223,23 @@ function printUser(user: User) {
     console.log(`name: ${user.name}`);
     console.log(`created: ${user.createdAt}`);
     console.log(`updated: ${user.updatedAt}`);
+}
+
+function parseDuration(durationStr: string): number {
+    const regex = /^(\d+)(ms|s|m|h)$/;
+    const match = durationStr.match(regex);
+    if (match === null) {
+        throw new Error("Invalid time format. Examples of correct: 1ms, 1s, 1m, 1h");
+    }
+
+    switch(match[2]) {
+        case "ms":
+            return parseInt(match[1]);
+        case "m":
+            return 60 * 1000 * parseInt(match[1]);
+        case "h":
+            return 60 * 60 * 1000 * parseInt(match[1]);
+        default:
+            return 1000 * parseInt(match[1]);
+    }
 }

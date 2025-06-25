@@ -7,7 +7,7 @@ import { getUserByName } from "./users";
 export async function createFeedFollow(userId: string, feedURL: string) {
     const feed = await getFeedByURL(feedURL);
     if (feed === undefined) {
-        throw new Error("no feed registered with porvided URL");
+        throw new Error("No feed registered with provided URL");
     }
 
     const [newFeedFollow] = await db.insert(feedFollows).values( { userId: userId, feedId: feed.id }).returning();
@@ -48,4 +48,18 @@ export async function deleteFollow(user: User, feedURL: string) {
     }
 
     await db.delete(feedFollows).where(eq(feedFollows.userId, user.id) && eq(feedFollows.feedId, feed.id));
+}
+
+export async function isFollowing(feedURL: string): Promise<boolean> {
+    const feed = await getFeedByURL(feedURL);
+    if (feed === undefined) {
+        throw new Error("Missing feed with the given URL.");
+    }
+
+    const feedFollow = await db.select().from(feedFollows).where(eq(feedFollows.feedId, feed.id));
+    if (feedFollow !== undefined) {
+        return true;
+    }
+
+    return false;
 }
