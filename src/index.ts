@@ -1,5 +1,5 @@
 import { error } from "console";
-import { CommandHandler, handlerAddfeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUnfollow, handlerUsers } from "./command_handler";
+import { CommandHandler, handlerAddfeed, handlerAgg, handlerBrowse, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUnfollow, handlerUsers } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { setUser, readConfig } from "./config";
 import os from "os";
@@ -24,6 +24,7 @@ async function main() {
     registerCommand(cmdRegistry, "follow", middlewareLoggedIn(handlerFollow));
     registerCommand(cmdRegistry, "following", middlewareLoggedIn(handlerFollowing));
     registerCommand(cmdRegistry, "unfollow", middlewareLoggedIn(handlerUnfollow));
+    registerCommand(cmdRegistry, "browse", handlerBrowse);
     
 
     const cmdName = process.argv[2];

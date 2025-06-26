@@ -1,8 +1,8 @@
 import { db } from "..";
 import { feedFollows, users, feeds, User } from "../schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getFeedById, getFeedByURL } from "./feeds";
-import { getUserByName } from "./users";
+import { getCurrentUser, getUserByName } from "./users";
 
 export async function createFeedFollow(userId: string, feedURL: string) {
     const feed = await getFeedByURL(feedURL);
@@ -56,7 +56,14 @@ export async function isFollowing(feedURL: string): Promise<boolean> {
         throw new Error("Missing feed with the given URL.");
     }
 
-    const feedFollow = await db.select().from(feedFollows).where(eq(feedFollows.feedId, feed.id));
+    const user = await getCurrentUser();
+    if (user === undefined) {
+        throw new Error("Current user is not registered");
+    }
+    const [feedFollow] = await db.select().from(feedFollows)
+                                        .where(and(
+                                            eq(feedFollows.feedId, feed.id),
+                                            eq(feedFollows.userId, user?.id)));
     if (feedFollow !== undefined) {
         return true;
     }

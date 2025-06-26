@@ -1,6 +1,7 @@
 import { readConfig, setUser } from "./config";
 import { createFeedFollow, deleteFollow, getFeedFollowsForUser, isFollowing } from "./lib/db/queries/feed_follows";
 import { createFeed, getFeedById, getFeedByURL, getFeeds, scrapeFeeds } from "./lib/db/queries/feeds";
+import { getPostsForUser } from "./lib/db/queries/posts";
 import { createUser, deleteAllUsers, getUserByName, getUsers, getUserById, getCurrentUser } from "./lib/db/queries/users";
 import { feeds, type Feed, type User } from "./lib/db/schema";
 import { fetchFeed } from "./rss";
@@ -87,20 +88,6 @@ export async function handlerAgg(cmdName: string, ...args: string[]) {
             console.error(`Unexpected exception caught trying to run command: ${err}`);
         }
     }
-
-    // const feed = await fetchFeed("https://www.wagslane.dev/index.xml");
-    // console.log(feed.channel);
-    // console.log(feed.channel.title);
-    // console.log(feed.channel.link);
-    // console.log(feed.channel.description);
-    // console.log("items:");
-    // for (const item of feed.channel.item) {
-    //     console.log("================");
-    //     console.log(item.title);
-    //     console.log(item.link);
-    //     console.log(item.description);
-    //     console.log(item.pubDate);
-    // }
 }
 
 export async function handlerAddfeed(cmdName: string, user: User, ...args: string[]) {
@@ -197,6 +184,29 @@ export async function handlerUnfollow(cmdName: string, user: User, ...args: stri
 
     try {
         await deleteFollow(user, args[0]);
+    } catch(err) {
+        if (err instanceof Error) {
+            throw new Error(err.message);
+        } else {
+            console.error(`Unexpected exception caught trying to run command: ${err}`);
+        }
+    }
+}
+
+export async function handlerBrowse(cmdName: string, ...args: string[]) {
+    if (args.length > 1) {
+        throw new Error(`usage: ${cmdName} <number of posts>`);
+    }
+
+    const limit = args[0] ? parseInt(args[0]) : 2;
+
+    try {
+        const posts = await getPostsForUser(limit);
+        console.log("======\n * Date\n * Title\n * URL\n=======");
+        for (const post of posts) {
+            console.log("=======");
+            console.log(` * ${post.posts.publishedAt?.toDateString()}\n * ${post.posts.title}\n * ${post.posts.url}`);
+        } 
     } catch(err) {
         if (err instanceof Error) {
             throw new Error(err.message);

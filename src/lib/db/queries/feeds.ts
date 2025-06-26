@@ -2,6 +2,7 @@ import { db } from "..";
 import { fetchFeed } from "../../../rss";
 import { feeds } from "../schema";
 import { eq, sql } from "drizzle-orm";
+import { createPost } from "./posts";
 
 export async function createFeed(name: string, url: string, userId: string | undefined) {
     if (userId === undefined) {
@@ -48,11 +49,17 @@ export async function scrapeFeeds() {
     markFeedFetched(nextFeed.url);
     const fetchedFeed = await fetchFeed(nextFeed.url);
 
-    console.log("\n\n==================================================");
-    console.log(nextFeed.lastFetchedAt);
-    console.log(`Posts from ${nextFeed.name}(${nextFeed.url})`);
+    console.log(`Fetching posts from ${nextFeed.name} (${nextFeed.url})...`);
+    let createdNewPosts = false;
     for (const item of fetchedFeed.channel.item) {
-        console.log(" * " + item.title);
+        const publishedAt = new Date(item.pubDate).toISOString();
+        const success = await createPost(item.title, item.link, item.description, publishedAt, nextFeed.id);
+        if (success) {
+            createdNewPosts = true;
+        }
+    }
+    if (!createdNewPosts) {
+        console.log("No new posts!");
     }
 }
 
